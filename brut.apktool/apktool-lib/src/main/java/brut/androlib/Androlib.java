@@ -371,7 +371,9 @@ public class Androlib {
         ExtFile file = new ExtFile(buildOptions.aarPath);
         try {
             InputStream in = file.getDirectory().getFileInput("R.txt");
-            XmlMaxIdSaver.mergePublicXml(appDir, new ExtFile(buildOptions.aarPath));
+            // merge XML
+            XmlMaxIdSaver.mergeXmlData(appDir, new ExtFile(buildOptions.aarPath));
+
 //            XmlMaxIdSaver.appendData(new File(appDir, "res/values/public.xml"), "color", "black", "0x123456");
 //            try (Scanner scanner = new Scanner(in)) {
 //                // read line

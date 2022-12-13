@@ -11,6 +11,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Scanner;
 import java.util.logging.Logger;
@@ -18,6 +19,7 @@ import java.util.logging.Logger;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
@@ -63,13 +65,13 @@ public class XmlMaxIdSaver {
         return maxId;
     }
 
-    public static void mergePublicXml(File appDir, ExtFile RFile) throws IOException, ParserConfigurationException, SAXException, TransformerException, XPathExpressionException, DirectoryException {
+    public static void mergeXmlData(File appDir, ExtFile RFile) throws IOException, ParserConfigurationException, SAXException, TransformerException, XPathExpressionException, DirectoryException {
         File publicFile = new File(appDir, "res/values/public.xml");
         Document doc = loadDocument(publicFile);
         XPath xPath = XPathFactory.newInstance().newXPath();
         InputStream in = RFile.getDirectory().getFileInput("R.txt");
         Scanner scanner = new Scanner(in);
-
+        ArrayList<String> idNames = new ArrayList<>();
         // read line
         while (scanner.hasNextLine()) {
             String line = scanner.nextLine();
@@ -79,32 +81,35 @@ public class XmlMaxIdSaver {
             // 将R.txt的数据，合并入public.xml和ids.xml
             long id = XmlMaxIdSaver.getCanUseId(publicFile, type);
             NodeList nodes = (NodeList) xPath.evaluate("//public[@type='" + type + "' and @name='" + name + "']", doc, XPathConstants.NODESET);
-            // 如果存在新属性则往后追加标签
+
             if (nodes.getLength() == 0) {
                 Node resources = doc.getElementsByTagName("resources").item(0);
                 Element publicTag = doc.createElement("public");
+                if (type.equals("id")) {
+                    // need to append ids.xml
+                    idNames.add(name);
+                }
                 publicTag.setAttribute("type", type);
                 publicTag.setAttribute("name", name);
-                publicTag.setAttribute("id", Long.toHexString(id));
+                publicTag.setAttribute("id", "0x" + Long.toHexString(id));
                 resources.appendChild(publicTag);
             }
         }
-        saveDocument(publicFile, doc);
+        try {
+            File idsFile = new File(appDir, "res/values/ids.xml");
+            Document idsDoc = loadDocument(idsFile);
+            Node resources = idsDoc.getElementsByTagName("resources").item(0);
+            for (String name : idNames) {
+                Element itemTag = idsDoc.createElement("item");
+                itemTag.setAttribute("type", "id");
+                itemTag.setAttribute("name", name);
+                resources.appendChild(itemTag);
+            }
 
-    }
-
-    public static void mergePublicXml(File file, String type, String name, String id) throws IOException, ParserConfigurationException, SAXException, TransformerException, XPathExpressionException {
-        Document doc = loadDocument(file);
-        XPath xPath = XPathFactory.newInstance().newXPath();
-        NodeList nodes = (NodeList) xPath.evaluate("//public[@type='" + type + "' and @name='" + name + "']", doc, XPathConstants.NODESET);
-        if (nodes.getLength() == 0) {
-            Node resources = doc.getElementsByTagName("resources").item(0);
-            Element publicTag = doc.createElement("public");
-            publicTag.setAttribute("type", type);
-            publicTag.setAttribute("name", name);
-            publicTag.setAttribute("id", id);
-            resources.appendChild(publicTag);
-            saveDocument(file, doc);
+            saveDocument(publicFile, doc);
+            saveDocument(idsFile, idsDoc);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
@@ -121,9 +126,12 @@ public class XmlMaxIdSaver {
 
         TransformerFactory transformerFactory = TransformerFactory.newInstance();
         Transformer transformer = transformerFactory.newTransformer();
+        transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+
         DOMSource source = new DOMSource(doc);
         StreamResult result = new StreamResult(file);
         transformer.transform(source, result);
+
     }
 
     /**
