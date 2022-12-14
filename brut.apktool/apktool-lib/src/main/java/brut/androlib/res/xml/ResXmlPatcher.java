@@ -338,6 +338,21 @@ public final class ResXmlPatcher {
         }
     }
 
+    public static String getPkgNameByManifest(File file) {
+        if (file.exists()) {
+            try {
+                Document doc = loadDocument(file);
+                Node manifest = doc.getFirstChild();
+                NamedNodeMap attr = manifest.getAttributes();
+                Node vPackage = attr.getNamedItem("package");
+                return vPackage.getNodeValue();
+            } catch (SAXException | ParserConfigurationException | IOException ignored) {
+            }
+        }
+        return null;
+    }
+
+
     /**
      * Replaces package value with passed packageOriginal string
      *
@@ -360,7 +375,7 @@ public final class ResXmlPatcher {
         } catch (SAXException | ParserConfigurationException | IOException | TransformerException ignored) {
         }
     }
-    
+
     /**
      * @param file File to load into Document
      * @return Document

@@ -38,6 +38,7 @@ public class BuildOptions {
     public String aaptPath = "";
     public boolean hasAarPath = false; // 是否有aar合并任务
     public String aarPath = ""; // 新增aar 路径
+    public String aarPackageName = ""; // 新增aar包名
 
     public int aaptVersion = 1; // default to v1
 

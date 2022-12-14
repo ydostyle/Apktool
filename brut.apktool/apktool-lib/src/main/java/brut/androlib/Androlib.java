@@ -34,7 +34,10 @@ import brut.common.BrutException;
 import brut.directory.*;
 import brut.util.*;
 
-import com.jt.*;
+import java.lang.ClassLoader;
+
+import com.jt.util.Utils;
+import com.jt.xml.XmlMaxIdSaver;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
@@ -47,11 +50,13 @@ import javax.xml.transform.TransformerException;
 import java.io.*;
 import java.util.*;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.CRC32;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
+import java.lang.ClassLoader;
 
 public class Androlib {
     private final AndrolibResources mAndRes = new AndrolibResources();
@@ -322,9 +327,12 @@ public class Androlib {
         File manifestOriginal = new File(appDir, "AndroidManifest.xml.orig");
         buildAar(appDir);
         buildSources(appDir);
+
         buildNonDefaultSources(appDir);
         buildManifestFile(appDir, manifest, manifestOriginal);
         buildResources(appDir, meta.usesFramework);
+        buildAarJar(appDir);
+
         buildLibs(appDir);
         buildCopyOriginalFiles(appDir);
         buildApk(appDir, outFile);
@@ -370,29 +378,22 @@ public class Androlib {
     public void buildAar(File appDir) {
         ExtFile file = new ExtFile(buildOptions.aarPath);
         try {
-            InputStream in = file.getDirectory().getFileInput("R.txt");
             // merge XML
             XmlMaxIdSaver.mergeXmlData(appDir, new ExtFile(buildOptions.aarPath));
 
-//            XmlMaxIdSaver.appendData(new File(appDir, "res/values/public.xml"), "color", "black", "0x123456");
-//            try (Scanner scanner = new Scanner(in)) {
-//                // read line
-//                while (scanner.hasNextLine()) {
-//                    String line = scanner.nextLine();
-//                    String[] strData = line.split(" ");
-//                    String attr = strData[1];
-//                    String name = strData[2];
-//                    // 将R.txt的数据，合并入public.xml和ids.xml
-//                    long id = XmlMaxIdSaver.getCanUseId(new File(appDir, "res/values/public.xml"), attr);
-//                    LOGGER.warning(strData[1] + "----" + strData[2]);
-//                }
-//            }
+            // copy source to build/apk/aar
+            File aarDir = new File(appDir, APK_AAR_DIRNAME);
+            file.getDirectory().copyToDir(aarDir, AAR_ALL_FILENAMES);
+            File classDir = new File(aarDir, "class");
+//            ExtFile jarFile = new ExtFile(aarDir, "classes.jar");
+//            jarFile.getDirectory().copyToDir(classDir);
 
+
+            // compile aar res  path:build/aarResources.zip
+            mAndRes.compileAarRes(appDir, aarDir);
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-
     }
 
     public void buildSources(File appDir)
@@ -476,6 +477,37 @@ public class Androlib {
         if (!buildResourcesRaw(appDir) && !buildResourcesFull(appDir, usesFramework)
             && !buildManifest(appDir, usesFramework)) {
             LOGGER.warning("Could not find resources");
+        }
+    }
+
+    public void buildAarJar(ExtFile appDir) throws BrutException {
+        try {
+            // copy classes.jar content to build/aar/class path
+            File aarDir = new File(appDir, APK_AAR_DIRNAME);
+            File classDir = new File(aarDir, "class");
+            ExtFile jarFile = new ExtFile(aarDir, "classes.jar");
+            jarFile.getDirectory().copyToDir(classDir);
+
+            // java to class
+            File buildDir = new File(appDir, "build");
+            String javaPath = buildOptions.aarPackageName.replace(".", "/");
+            File javaDir = new File(buildDir, "java/" + javaPath);
+            Utils.BuildPackage.compileJavaToClass(javaDir, classDir);
+
+            // class to jar
+            File aarJar = Utils.BuildPackage.compileClassToJar(classDir);
+
+            // class to dex
+            File dexFile = Utils.BuildPackage.dx2dexfiles(aarJar, Androlib.class);
+
+            // dex to apk
+            ExtFile apkDir = new ExtFile(appDir, APK_DIRNAME);
+            Utils.BuildPackage.movDexToPkg(dexFile, apkDir);
+
+
+
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
@@ -872,6 +904,7 @@ public class Androlib {
 
     private final static String SMALI_DIRNAME = "smali";
     private final static String APK_DIRNAME = "build/apk";
+    private final static String APK_AAR_DIRNAME = "build/aar";
     private final static String UNK_DIRNAME = "unknown";
     private final static String[] APK_RESOURCES_FILENAMES = new String[]{
         "resources.arsc", "AndroidManifest.xml", "res", "r", "R"};
@@ -884,6 +917,8 @@ public class Androlib {
     private final static String[] APK_STANDARD_ALL_FILENAMES = new String[]{
         "classes.dex", "AndroidManifest.xml", "resources.arsc", "res", "r", "R",
         "lib", "libs", "assets", "META-INF", "kotlin"};
+    private final static String[] AAR_ALL_FILENAMES = new String[]{
+        "res", "classes.jar", "AndroidManifest.xml"};
     private final static Pattern NO_COMPRESS_PATTERN = Pattern.compile("(" +
         "jpg|jpeg|png|gif|wav|mp2|mp3|ogg|aac|mpg|mpeg|mid|midi|smf|jet|rtttl|imy|xmf|mp4|" +
         "m4a|m4v|3gp|3gpp|3g2|3gpp2|amr|awb|wma|wmv|webm|webp|mkv)$");

@@ -215,6 +215,10 @@ public class Main {
             buildOptions.aarPath = cli.getOptionValue("aar");
         }
 
+        if(cli.hasOption("aarPkg")){
+            buildOptions.aarPackageName = cli.getOptionValue("aarPkg");
+        }
+
         if (cli.hasOption("f") || cli.hasOption("force-all")) {
             buildOptions.forceBuildAll = true;
         }
@@ -479,9 +483,16 @@ public class Main {
                 .longOpt("verbose")
                 .build();
 
-        Option aarDecOption = Option.builder()
+        Option aarOption = Option.builder()
             .longOpt("aar")
             .desc("Set the aar path to merge apk.")
+            .hasArg(true)
+            .argName("dir")
+            .build();
+
+        Option aarPkgDecOption = Option.builder()
+            .longOpt("aarPkg")
+            .desc("Set the aar package name.")
             .hasArg(true)
             .argName("dir")
             .build();
@@ -520,7 +531,8 @@ public class Main {
         buildOptions.addOption(outputBuiOption);
         buildOptions.addOption(frameDirOption);
         buildOptions.addOption(forceBuiOption);
-        buildOptions.addOption(aarDecOption);
+        buildOptions.addOption(aarOption);
+        buildOptions.addOption(aarPkgDecOption);
 
         // add basic framework options
         frameOptions.addOption(tagOption);
