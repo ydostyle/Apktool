@@ -511,7 +511,7 @@ public class Androlib {
             File dexFile = Utils.BuildPackage.dx2dexfiles(aarJar, Androlib.class);
 
             // dex to apk
-            LOGGER.info("move " + dexFile.getName() + " to apk path...");
+            LOGGER.info("Move aar " + dexFile.getName() + " to apk path...");
             ExtFile apkDir = new ExtFile(appDir, APK_DIRNAME);
             Utils.BuildPackage.movDexToPkg(dexFile, apkDir);
         } catch (Exception e) {
