@@ -468,6 +468,7 @@ final public class AndrolibResources {
         }
 
         if (buildOptions.hasAarPath) {
+            cmd.add("--auto-add-overlay");
             cmd.add("-R");
             File buildDir = new File(resDir.getParent(), "build");
             File aarResourcesZip = new File(buildDir, "aarResources.zip");

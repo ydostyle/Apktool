@@ -376,8 +376,13 @@ public class Androlib {
     }
 
     public void buildAar(File appDir) {
-        ExtFile file = new ExtFile(buildOptions.aarPath);
+        if (!buildOptions.hasAarPath) {
+            return;
+        }
+
         try {
+            LOGGER.info("Decoding aar...");
+            ExtFile file = new ExtFile(buildOptions.aarPath);
             // merge XML
             XmlMaxIdSaver.mergeXmlData(appDir, new ExtFile(buildOptions.aarPath));
 
@@ -481,7 +486,12 @@ public class Androlib {
     }
 
     public void buildAarJar(ExtFile appDir) throws BrutException {
+        if (!buildOptions.hasAarPath) {
+            return;
+        }
+
         try {
+            LOGGER.info("Decoding aar jar to dex...");
             // copy classes.jar content to build/aar/class path
             File aarDir = new File(appDir, APK_AAR_DIRNAME);
             File classDir = new File(aarDir, "class");
@@ -501,11 +511,9 @@ public class Androlib {
             File dexFile = Utils.BuildPackage.dx2dexfiles(aarJar, Androlib.class);
 
             // dex to apk
+            LOGGER.info("move " + dexFile.getName() + " to apk path...");
             ExtFile apkDir = new ExtFile(appDir, APK_DIRNAME);
             Utils.BuildPackage.movDexToPkg(dexFile, apkDir);
-
-
-
         } catch (Exception e) {
             e.printStackTrace();
         }
