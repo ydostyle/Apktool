@@ -473,8 +473,14 @@ final public class AndrolibResources {
             File buildDir = new File(resDir.getParent(), "build");
             File aarResourcesZip = new File(buildDir, "aarResources.zip");
             File javaDir = new File(buildDir, "java");
-            javaDir.mkdir();
-            javaDir.delete();
+            if(!javaDir.exists()){
+                javaDir.mkdir();
+            }
+            try {
+                OS.rmdir(javaDir);
+            } catch (BrutException e) {
+                e.printStackTrace();
+            }
             if (rawDir != null) {
                 cmd.add(aarResourcesZip.getAbsolutePath() + ";" + rawDir.getAbsolutePath());
             } else {
@@ -660,6 +666,7 @@ final public class AndrolibResources {
 
         File buildDir = new File(appDir, "build");
         File aarResourcesZip = new File(buildDir, "aarResources.zip");
+        aarResourcesZip.delete();
         cmd.add("-o");
         cmd.add(aarResourcesZip.getAbsolutePath());
 

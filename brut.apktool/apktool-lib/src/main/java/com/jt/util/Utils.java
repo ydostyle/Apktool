@@ -4,11 +4,15 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
 import brut.androlib.Androlib;
 import brut.androlib.AndrolibException;
 import brut.common.BrutException;
+import brut.directory.Directory;
+import brut.directory.DirectoryException;
+import brut.directory.ExtFile;
 import brut.util.Jar;
 import brut.util.OS;
 
@@ -40,25 +44,23 @@ public class Utils {
             return classDir;
         }
 
-        public static void movDexToPkg(File srcDexFile, File dstDir) {
-            String[] names = dstDir.list();
+        public static void movDexToPkg(ExtFile appDir, File srcDexFile, File dstDir) throws DirectoryException {
             int maxIdx = 1;
-            for (String name : names) {
-                if (name.contains("classes")) {
-                    // Split the string at "classes" and get the last part
-                    String[] parts1 = name.split("classes");
-                    String[] parts2 = parts1[1].split(".dex");
-                    if (parts2.length == 1) {
-                        int idx = Integer.parseInt(parts2[0]);
-                        if (idx > maxIdx) {
-                            maxIdx = idx;
-                        }
+            Map<String, Directory> dirs = appDir.getDirectory().getDirs();
+            for (Map.Entry<String, Directory> directory : dirs.entrySet()) {
+                String name = directory.getKey();
+                if (name.startsWith("smali_classes")) {
+                    String[] parts = name.split("smali_classes");
+                    int idx = Integer.parseInt(parts[1]);
+                    if (idx > maxIdx) {
+                        maxIdx = idx;
                     }
                 }
             }
             maxIdx++;
             String dexName = "classes" + maxIdx + ".dex";
             File dexFile = new File(dstDir, dexName);
+            dexFile.delete();
             srcDexFile.renameTo(dexFile);
         }
 

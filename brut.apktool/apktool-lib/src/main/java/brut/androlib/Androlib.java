@@ -383,16 +383,18 @@ public class Androlib {
         try {
             LOGGER.info("Decoding aar...");
             ExtFile file = new ExtFile(buildOptions.aarPath);
+
             // merge XML
             XmlMaxIdSaver.mergeXmlData(appDir, new ExtFile(buildOptions.aarPath));
 
             // copy source to build/apk/aar
             File aarDir = new File(appDir, APK_AAR_DIRNAME);
-            file.getDirectory().copyToDir(aarDir, AAR_ALL_FILENAMES);
-            File classDir = new File(aarDir, "class");
-//            ExtFile jarFile = new ExtFile(aarDir, "classes.jar");
-//            jarFile.getDirectory().copyToDir(classDir);
+            if (!aarDir.exists()) {
+                aarDir.mkdir();
+            }
+            OS.rmdir(aarDir);
 
+            file.getDirectory().copyToDir(aarDir, AAR_ALL_FILENAMES);
 
             // compile aar res  path:build/aarResources.zip
             mAndRes.compileAarRes(appDir, aarDir);
@@ -494,6 +496,8 @@ public class Androlib {
             LOGGER.info("Decoding aar jar to dex...");
             // copy classes.jar content to build/aar/class path
             File aarDir = new File(appDir, APK_AAR_DIRNAME);
+
+
             File classDir = new File(aarDir, "class");
             ExtFile jarFile = new ExtFile(aarDir, "classes.jar");
             jarFile.getDirectory().copyToDir(classDir);
@@ -513,7 +517,7 @@ public class Androlib {
             // dex to apk
             LOGGER.info("Move aar " + dexFile.getName() + " to apk path...");
             ExtFile apkDir = new ExtFile(appDir, APK_DIRNAME);
-            Utils.BuildPackage.movDexToPkg(dexFile, apkDir);
+            Utils.BuildPackage.movDexToPkg(appDir, dexFile, apkDir);
         } catch (Exception e) {
             e.printStackTrace();
         }
