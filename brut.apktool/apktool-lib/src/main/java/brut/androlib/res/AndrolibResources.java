@@ -677,12 +677,6 @@ final public class AndrolibResources {
         if (buildOptions.noCrunch) {
             cmd.add("--no-crunch");
         }
-        StringBuilder sb = new StringBuilder();
-        for (String s : cmd) {
-            sb.append(s + " ");
-        }
-
-        System.out.println(sb.toString());
 
         try {
             OS.exec(cmd.toArray(new String[0]));

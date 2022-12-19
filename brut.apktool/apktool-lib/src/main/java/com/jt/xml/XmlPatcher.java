@@ -1,21 +1,32 @@
 package com.jt.xml;
 
+import com.jt.util.Utils;
+
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.StringReader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Scanner;
 import java.util.logging.Logger;
 
+import javax.xml.namespace.NamespaceContext;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -34,11 +45,11 @@ import brut.androlib.res.xml.ResXmlPatcher;
 import brut.directory.DirectoryException;
 import brut.directory.ExtFile;
 
-public class XmlMaxIdSaver {
+public class XmlPatcher {
     // public.xml increment id
     static HashMap<String, Long> auto_id_maps = new HashMap<>();
 
-    public static Long getCanUseId(File file, String type) throws IOException, ParserConfigurationException, SAXException, XPathExpressionException {
+    public static Long getCanUsePublicId(File file, String type) throws IOException, ParserConfigurationException, SAXException, XPathExpressionException {
         Long id = auto_id_maps.get(type);
         long maxId = 0;
         // 如果在字典中没有查询到类型存储id，则通过public.xml遍历获取到最大id
@@ -65,7 +76,72 @@ public class XmlMaxIdSaver {
         return maxId;
     }
 
-    public static void mergeXmlData(File appDir, ExtFile RFile) throws IOException, ParserConfigurationException, SAXException, TransformerException, XPathExpressionException, DirectoryException {
+    public static String getPackageName(File appDir) throws IOException, ParserConfigurationException, SAXException {
+        File publicFile = new File(appDir, "AndroidManifest.xml");
+        Document doc = loadDocument(publicFile);
+        Node manifest = doc.getFirstChild();
+        NamedNodeMap attr = manifest.getAttributes();
+        Node vPackage = attr.getNamedItem("package");
+        return vPackage.getNodeValue();
+    }
+
+    public static void addActivity(File appDir, String pkgName) throws IOException, ParserConfigurationException, SAXException, XPathExpressionException, TransformerException {
+        File manifestFile = new File(appDir, "AndroidManifest.xml");
+
+        Document doc = loadDocument(manifestFile);
+
+        XPath xpath = XPathFactory.newInstance().newXPath();
+
+        Node mainNode = (Node) xpath.evaluate("//intent-filter/action[@name='android.intent.action.MAIN']", doc, XPathConstants.NODE);
+        Node launcherNode = (Node) xpath.evaluate("//intent-filter/category[@name='android.intent.category.LAUNCHER']", doc, XPathConstants.NODE);
+        if (mainNode == null || launcherNode == null) {
+            LOGGER.warning("not found node");
+            return;
+        }
+
+        // edit data
+        NamedNodeMap mainNodeMap = mainNode.getAttributes();
+        Node nameAttr = mainNodeMap.getNamedItem("android:name");
+        nameAttr.setNodeValue("twoPage");
+        mainNodeMap = launcherNode.getAttributes();
+        nameAttr = mainNodeMap.getNamedItem("android:name");
+        nameAttr.setNodeValue("android.intent.category.DEFAULT");
+//        mainNode.getParentNode().removeChild(mainNode);
+
+        // add new android.intent.action.MAIN
+        Node appNode = (Node) xpath.evaluate("//application", doc, XPathConstants.NODE);
+
+        // activity
+        org.w3c.dom.Element activity = doc.createElement("activity");
+        activity.setAttribute("android:exported", "true");
+        activity.setAttribute("android:name", pkgName + ".MainActivity");
+
+        // create intent-filter
+        org.w3c.dom.Element intentFilter = doc.createElement("intent-filter");
+
+        // create action
+        org.w3c.dom.Element action = doc.createElement("action");
+        action.setAttribute("android:name", "android.intent.action.MAIN");
+        intentFilter.appendChild(action);
+
+        // create category
+        org.w3c.dom.Element category = doc.createElement("category");
+        category.setAttribute("android:name", "android.intent.category.LAUNCHER");
+        intentFilter.appendChild(category);
+
+        // create meta-data
+        org.w3c.dom.Element metaData = doc.createElement("meta-data");
+        metaData.setAttribute("android:name", "android.app.lib_name");
+        metaData.setAttribute("android:value", "");
+
+        activity.appendChild(intentFilter);
+        activity.appendChild(metaData);
+        appNode.appendChild(activity);
+        saveDocument(manifestFile, doc);
+
+    }
+
+    public static void mergeXmlData(File appDir, ExtFile RFile) throws IOException, ParserConfigurationException, SAXException, XPathExpressionException, DirectoryException {
         File publicFile = new File(appDir, "res/values/public.xml");
         Document doc = loadDocument(publicFile);
         XPath xPath = XPathFactory.newInstance().newXPath();
@@ -79,7 +155,7 @@ public class XmlMaxIdSaver {
             String type = strData[1];
             String name = strData[2];
             // 将R.txt的数据，合并入public.xml和ids.xml
-            long id = XmlMaxIdSaver.getCanUseId(publicFile, type);
+            long id = XmlPatcher.getCanUsePublicId(publicFile, type);
             NodeList nodes = (NodeList) xPath.evaluate("//public[@type='" + type + "' and @name='" + name + "']", doc, XPathConstants.NODESET);
 
             if (nodes.getLength() == 0) {
@@ -123,13 +199,16 @@ public class XmlMaxIdSaver {
      */
     private static void saveDocument(File file, Document doc)
         throws IOException, SAXException, ParserConfigurationException, TransformerException {
+        // clear space
+        Utils.FileUtils.trimWhitespace(doc.getFirstChild());
 
         TransformerFactory transformerFactory = TransformerFactory.newInstance();
         Transformer transformer = transformerFactory.newTransformer();
-        transformer.setOutputProperty(OutputKeys.INDENT, "no");
+        transformer.setOutputProperty(OutputKeys.INDENT, "yes");
 
         DOMSource source = new DOMSource(doc);
         StreamResult result = new StreamResult(file);
+
         transformer.transform(source, result);
 
     }

@@ -60,6 +60,7 @@ public class FileDirectory extends AbstractDirectory {
     protected AbstractDirectory createDirLocal(String name) throws DirectoryException {
         File dir = new File(generatePath(name));
         dir.mkdir();
+
         return new FileDirectory(dir);
     }
 

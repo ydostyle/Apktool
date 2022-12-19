@@ -215,8 +215,12 @@ public class Main {
             buildOptions.aarPath = cli.getOptionValue("aar");
         }
 
-        if(cli.hasOption("aarPkg")){
-            buildOptions.aarPackageName = cli.getOptionValue("aarPkg");
+        if(cli.hasOption("aar-pkg")){
+            buildOptions.aarPackageName = cli.getOptionValue("aar-pkg");
+        }
+
+        if(cli.hasOption("rename-pkg")){
+            buildOptions.renamePackageName = cli.getOptionValue("rename-pkg");
         }
 
         if (cli.hasOption("f") || cli.hasOption("force-all")) {
@@ -490,9 +494,16 @@ public class Main {
             .argName("dir")
             .build();
 
-        Option aarPkgDecOption = Option.builder()
-            .longOpt("aarPkg")
+        Option aarPkgOption = Option.builder()
+            .longOpt("aar-pkg")
             .desc("Set the aar package name.")
+            .hasArg(true)
+            .argName("dir")
+            .build();
+
+        Option renamePkgOption = Option.builder()
+            .longOpt("rename-pkg")
+            .desc("rename package name.")
             .hasArg(true)
             .argName("dir")
             .build();
@@ -532,7 +543,9 @@ public class Main {
         buildOptions.addOption(frameDirOption);
         buildOptions.addOption(forceBuiOption);
         buildOptions.addOption(aarOption);
-        buildOptions.addOption(aarPkgDecOption);
+        buildOptions.addOption(aarPkgOption);
+        buildOptions.addOption(renamePkgOption);
+
 
         // add basic framework options
         frameOptions.addOption(tagOption);

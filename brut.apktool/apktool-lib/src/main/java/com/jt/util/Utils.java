@@ -1,8 +1,20 @@
 package com.jt.util;
 
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
@@ -17,6 +29,8 @@ import brut.util.Jar;
 import brut.util.OS;
 
 public class Utils {
+    private final static Logger LOGGER = Logger.getLogger(Utils.class.getName());
+
     public static class FileUtils {
         public static File getAndroidJar(Class clazz) throws IOException, BrutException {
             File file = Jar.getResourceAsFile("/brut/androlib/android.jar", clazz);
@@ -25,10 +39,56 @@ public class Utils {
             return file;
         }
 
+        public static void trimWhitespace(Node node)
+        {
+            NodeList children = node.getChildNodes();
+            for(int i = 0; i < children.getLength(); ++i) {
+                Node child = children.item(i);
+                if(child.getNodeType() == Node.TEXT_NODE) {
+                    child.setTextContent(child.getTextContent().trim());
+                }
+                trimWhitespace(child);
+            }
+        }
+
         public static File getD8Jar(Class clazz) throws IOException, BrutException {
             File file = Jar.getResourceAsFile("/brut/androlib/d8.jar", clazz);
             file.setExecutable(true);
             return file;
+        }
+
+        public static void replacePkgName(Path rootPath, String oldName, String newName) throws IOException {
+            String exclude1 = new File(rootPath.toString(), "build").toString();
+            String exclude2 = new File(rootPath.toString(), "dist").toString();
+            String exclude3 = new File(rootPath.toString(), "original").toString();
+            String smaliPath = new File(rootPath.toString(), "smali").toString();
+            LOGGER.info("Start replacing the package name...");
+            Files.walkFileTree(rootPath, new SimpleFileVisitor<Path>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    String fileString = file.toAbsolutePath().toString();
+                    if (fileString.startsWith(exclude1) || fileString.startsWith(exclude2) || fileString.startsWith(exclude3)) {
+                        return FileVisitResult.CONTINUE;
+                    }
+
+                    byte[] bytes = Files.readAllBytes(file);
+                    // read content
+                    String content = new String(bytes, StandardCharsets.ISO_8859_1);
+
+                    // write content
+                    String replaced = content.replace(oldName, newName);
+
+                    // smali additional handling
+                    if(fileString.startsWith(smaliPath)){
+                        replaced = replaced.replace(oldName.replace(".","/"), newName.replace(".","/"));
+                    }
+
+                    // 写入替换后的内容
+                    Files.write(file, replaced.getBytes(StandardCharsets.ISO_8859_1), StandardOpenOption.TRUNCATE_EXISTING);
+
+                    return FileVisitResult.CONTINUE;
+                }
+            });
         }
     }
 
@@ -102,7 +162,6 @@ public class Utils {
 
 
     public static class OSCMD {
-        private final static Logger LOGGER = Logger.getLogger(Utils.class.getName());
 
         public static void runCMD(List<String> cmd) throws AndrolibException {
             try {

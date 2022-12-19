@@ -34,10 +34,8 @@ import brut.common.BrutException;
 import brut.directory.*;
 import brut.util.*;
 
-import java.lang.ClassLoader;
-
 import com.jt.util.Utils;
-import com.jt.xml.XmlMaxIdSaver;
+import com.jt.xml.XmlPatcher;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
@@ -48,15 +46,15 @@ import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerException;
 
 import java.io.*;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.logging.Logger;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.CRC32;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
-import java.lang.ClassLoader;
 
 public class Androlib {
     private final AndrolibResources mAndRes = new AndrolibResources();
@@ -325,6 +323,9 @@ public class Androlib {
         new File(appDir, APK_DIRNAME).mkdirs();
         File manifest = new File(appDir, "AndroidManifest.xml");
         File manifestOriginal = new File(appDir, "AndroidManifest.xml.orig");
+
+        renamePackage(appDir);
+
         buildAar(appDir);
         buildSources(appDir);
 
@@ -375,6 +376,20 @@ public class Androlib {
         }
     }
 
+    public void renamePackage(File appDir) {
+        if (buildOptions.renamePackageName == null) {
+            return;
+        }
+        Path rootPath = Paths.get(appDir.getPath());
+        try {
+            String pkgName = XmlPatcher.getPackageName(appDir);
+            Utils.FileUtils.replacePkgName(rootPath, pkgName, buildOptions.renamePackageName);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+
     public void buildAar(File appDir) {
         if (!buildOptions.hasAarPath) {
             return;
@@ -384,8 +399,11 @@ public class Androlib {
             LOGGER.info("Decoding aar...");
             ExtFile file = new ExtFile(buildOptions.aarPath);
 
+            // add activity to Manifest.xml
+            XmlPatcher.addActivity(appDir, buildOptions.aarPackageName);
+
             // merge XML
-            XmlMaxIdSaver.mergeXmlData(appDir, new ExtFile(buildOptions.aarPath));
+            XmlPatcher.mergeXmlData(appDir, new ExtFile(buildOptions.aarPath));
 
             // copy source to build/apk/aar
             File aarDir = new File(appDir, APK_AAR_DIRNAME);
