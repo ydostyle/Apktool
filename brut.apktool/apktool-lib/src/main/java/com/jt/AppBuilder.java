@@ -2,7 +2,7 @@ package com.jt;
 
 import com.jt.xml.XmlPatcher;
 
-import org.w3c.dom.Document;
+import org.xml.sax.SAXException;
 
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
@@ -11,11 +11,14 @@ import java.awt.image.BufferedImage;
 import java.awt.image.ColorModel;
 import java.awt.image.WritableRaster;
 import java.io.File;
+import java.io.IOException;
 
 import javax.imageio.ImageIO;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.TransformerException;
 
 
-public class LogoBuilder {
+public class AppBuilder {
     /**
      * resize image
      */
@@ -68,7 +71,7 @@ public class LogoBuilder {
         ImageIO.write(srcImage, imgType, saveFile);
     }
 
-    public static void build(File appDir, File logoFile) throws Exception {
+    public static void buildLogo(File appDir, File logoFile) throws Exception {
         String logoName = "jt_ic_launcher";
         // save image
         File dstFile1 = new File(appDir, "/res/mipmap-hdpi/" + logoName + ".png");
@@ -76,6 +79,12 @@ public class LogoBuilder {
         File dstFile3 = new File(appDir, "/res/mipmap-xhdpi/" + logoName + ".png");
         File dstFile4 = new File(appDir, "/res/mipmap-xxhdpi/" + logoName + ".png");
         File dstFile5 = new File(appDir, "/res/mipmap-xxxhdpi/" + logoName + ".png");
+        dstFile1.mkdirs();
+        dstFile2.mkdirs();
+        dstFile3.mkdirs();
+        dstFile4.mkdirs();
+        dstFile5.mkdirs();
+
         saveImageAsJpg(logoFile.getAbsolutePath(), dstFile1.getAbsolutePath(), 78, 78);
         saveImageAsJpg(logoFile.getAbsolutePath(), dstFile2.getAbsolutePath(), 48, 48);
         saveImageAsJpg(logoFile.getAbsolutePath(), dstFile3.getAbsolutePath(), 96, 96);
@@ -89,5 +98,10 @@ public class LogoBuilder {
         XmlPatcher.editApplicationAttr(new File(appDir, "AndroidManifest.xml"), "android:icon", "@mipmap/" + logoName);
         XmlPatcher.editApplicationAttr(new File(appDir, "AndroidManifest.xml"), "android:roundIcon", "@mipmap/" + logoName);
 
+    }
+
+
+    public static void editAppName(File appDir, String appName) throws IOException, ParserConfigurationException, TransformerException, SAXException {
+        XmlPatcher.editApplicationAttr(new File(appDir, "AndroidManifest.xml"), "android:label", appName);
     }
 }

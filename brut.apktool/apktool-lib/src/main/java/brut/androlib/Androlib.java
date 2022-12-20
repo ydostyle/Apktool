@@ -34,7 +34,7 @@ import brut.common.BrutException;
 import brut.directory.*;
 import brut.util.*;
 
-import com.jt.LogoBuilder;
+import com.jt.AppBuilder;
 import com.jt.util.Utils;
 import com.jt.xml.XmlPatcher;
 
@@ -327,7 +327,7 @@ public class Androlib {
 
         renamePackage(appDir);
 
-        buildLogo(appDir);
+        buildAppData(appDir);
         buildAar(appDir);
         buildSources(appDir);
 
@@ -392,24 +392,26 @@ public class Androlib {
 
     }
 
-    public void buildLogo(File appDir) {
-        if (buildOptions.logoPath.isEmpty()) {
-            return;
-        }
-        LOGGER.info("Start build Logo...");
+    public void buildAppData(File appDir) {
         try {
-            LogoBuilder.build(appDir, new File(buildOptions.logoPath));
+            if (!buildOptions.logoPath.isEmpty()) {
+                LOGGER.info("Start build Logo...");
+                AppBuilder.buildLogo(appDir, new File(buildOptions.logoPath));
+            }
+
+            if (!buildOptions.appName.isEmpty()) {
+                LOGGER.info("Edit app name...");
+                AppBuilder.editAppName(appDir, buildOptions.appName);
+            }
         } catch (Exception e) {
             LOGGER.warning("build logo error");
         }
-
     }
 
     public void buildAar(File appDir) {
         if (!buildOptions.hasAarPath) {
             return;
         }
-
         try {
             LOGGER.info("build aar...");
             ExtFile file = new ExtFile(buildOptions.aarPath);

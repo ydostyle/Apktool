@@ -52,9 +52,10 @@ public class XmlPatcher {
     public static Long getCanUsePublicId(File file, String type) throws IOException, ParserConfigurationException, SAXException, XPathExpressionException {
         Long id = auto_id_maps.get(type);
         long maxId = 0;
+        Document doc = null;
         // 如果在字典中没有查询到类型存储id，则通过public.xml遍历获取到最大id
         if (auto_id_maps.get(type) == null) {
-            Document doc = loadDocument(file);
+            doc = loadDocument(file);
             XPath xPath = XPathFactory.newInstance().newXPath();
             NodeList nodes = (NodeList) xPath.evaluate("//public[@type='" + type + "']", doc, XPathConstants.NODESET);
             for (int i = 0; i < nodes.getLength(); i++) {
@@ -70,6 +71,19 @@ public class XmlPatcher {
         } else {
             maxId = id;
         }
+        if (maxId == 0) {
+            // If no type id is found, create one
+            if (doc == null) {
+                doc = loadDocument(file);
+            }
+            Node resources = doc.getElementsByTagName("resources").item(0);
+            NodeList childs = resources.getChildNodes();
+            Node lastNode = childs.item(childs.getLength() - 2);
+            NamedNodeMap map = lastNode.getAttributes();
+            Node idAttr = map.getNamedItem("id");
+            maxId = ((Long.parseLong(idAttr.getNodeValue().replace("0x", ""), 16) >> 16) + 1) << 16;
+        }
+
         // 当前id+1
         maxId++;
         auto_id_maps.put(type, maxId);
@@ -143,16 +157,16 @@ public class XmlPatcher {
 
     public static void editApplicationAttr(File manifest, String attrName, String attrVal) throws IOException, ParserConfigurationException, SAXException, TransformerException {
 
-            Document doc = loadDocument(manifest);
-            Node application = doc.getElementsByTagName("application").item(0);
+        Document doc = loadDocument(manifest);
+        Node application = doc.getElementsByTagName("application").item(0);
 
-            // load attr
-            NamedNodeMap attrMap = application.getAttributes();
-            Node attrNode = attrMap.getNamedItem(attrName);
+        // load attr
+        NamedNodeMap attrMap = application.getAttributes();
+        Node attrNode = attrMap.getNamedItem(attrName);
+        if (attrNode != null) {
             attrNode.setNodeValue(attrVal);
-
             saveDocument(manifest, doc);
-
+        }
     }
 
     public static void addResourceId(File appDir, String name, String type) throws IOException, ParserConfigurationException, SAXException, XPathExpressionException, TransformerException {

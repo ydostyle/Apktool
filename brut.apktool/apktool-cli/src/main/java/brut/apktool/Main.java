@@ -216,6 +216,10 @@ public class Main {
             buildOptions.aarPath = cli.getOptionValue("aar");
         }
 
+        if(cli.hasOption("app-name")){
+            buildOptions.appName = cli.getOptionValue("app-name");
+        }
+
         if(cli.hasOption("logo")){
             buildOptions.logoPath = cli.getOptionValue("logo");
         }
@@ -520,6 +524,13 @@ public class Main {
             .argName("dir")
             .build();
 
+        Option appNameOption = Option.builder()
+            .longOpt("app-name")
+            .desc("Edit app name.")
+            .hasArg(true)
+            .argName("dir")
+            .build();
+
         // check for advance mode
         if (isAdvanceMode()) {
             decodeOptions.addOption(noDbgOption);
@@ -558,7 +569,7 @@ public class Main {
         buildOptions.addOption(aarPkgOption);
         buildOptions.addOption(renamePkgOption);
         buildOptions.addOption(logoOption);
-
+        buildOptions.addOption(appNameOption);
 
         // add basic framework options
         frameOptions.addOption(tagOption);
