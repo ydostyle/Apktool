@@ -60,6 +60,7 @@ public class Main {
             return;
         }
 
+
         // check for verbose / quiet
         if (commandLine.hasOption("-v") || commandLine.hasOption("--verbose")) {
             verbosity = Verbosity.VERBOSE;
@@ -213,6 +214,10 @@ public class Main {
         if (cli.hasOption("aar")) {
             buildOptions.hasAarPath = true;
             buildOptions.aarPath = cli.getOptionValue("aar");
+        }
+
+        if(cli.hasOption("logo")){
+            buildOptions.logoPath = cli.getOptionValue("logo");
         }
 
         if(cli.hasOption("aar-pkg")){
@@ -508,6 +513,13 @@ public class Main {
             .argName("dir")
             .build();
 
+        Option logoOption = Option.builder()
+            .longOpt("logo")
+            .desc("build logo.")
+            .hasArg(true)
+            .argName("dir")
+            .build();
+
         // check for advance mode
         if (isAdvanceMode()) {
             decodeOptions.addOption(noDbgOption);
@@ -545,6 +557,7 @@ public class Main {
         buildOptions.addOption(aarOption);
         buildOptions.addOption(aarPkgOption);
         buildOptions.addOption(renamePkgOption);
+        buildOptions.addOption(logoOption);
 
 
         // add basic framework options

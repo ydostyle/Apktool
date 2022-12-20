@@ -34,6 +34,7 @@ import brut.common.BrutException;
 import brut.directory.*;
 import brut.util.*;
 
+import com.jt.LogoBuilder;
 import com.jt.util.Utils;
 import com.jt.xml.XmlPatcher;
 
@@ -326,6 +327,7 @@ public class Androlib {
 
         renamePackage(appDir);
 
+        buildLogo(appDir);
         buildAar(appDir);
         buildSources(appDir);
 
@@ -386,6 +388,19 @@ public class Androlib {
             Utils.FileUtils.replacePkgName(rootPath, pkgName, buildOptions.renamePackageName);
         } catch (Exception e) {
             e.printStackTrace();
+        }
+
+    }
+
+    public void buildLogo(File appDir) {
+        if (buildOptions.logoPath.isEmpty()) {
+            return;
+        }
+        LOGGER.info("Start build Logo...");
+        try {
+            LogoBuilder.build(appDir, new File(buildOptions.logoPath));
+        } catch (Exception e) {
+            LOGGER.warning("build logo error");
         }
 
     }

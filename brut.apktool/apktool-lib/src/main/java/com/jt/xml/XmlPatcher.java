@@ -141,13 +141,44 @@ public class XmlPatcher {
 
     }
 
+    public static void editApplicationAttr(File manifest, String attrName, String attrVal) throws IOException, ParserConfigurationException, SAXException, TransformerException {
+
+            Document doc = loadDocument(manifest);
+            Node application = doc.getElementsByTagName("application").item(0);
+
+            // load attr
+            NamedNodeMap attrMap = application.getAttributes();
+            Node attrNode = attrMap.getNamedItem(attrName);
+            attrNode.setNodeValue(attrVal);
+
+            saveDocument(manifest, doc);
+
+    }
+
+    public static void addResourceId(File appDir, String name, String type) throws IOException, ParserConfigurationException, SAXException, XPathExpressionException, TransformerException {
+        File publicFile = new File(appDir, "res/values/public.xml");
+        Document doc = loadDocument(publicFile);
+        long id = XmlPatcher.getCanUsePublicId(publicFile, type);
+        XPath xPath = XPathFactory.newInstance().newXPath();
+        NodeList nodes = (NodeList) xPath.evaluate("//public[@type='" + type + "' and @name='" + name + "']", doc, XPathConstants.NODESET);
+        if (nodes.getLength() == 0) {
+            Node resources = doc.getElementsByTagName("resources").item(0);
+            Element publicTag = doc.createElement("public");
+            publicTag.setAttribute("type", type);
+            publicTag.setAttribute("name", name);
+            publicTag.setAttribute("id", "0x" + Long.toHexString(id));
+            resources.appendChild(publicTag);
+            saveDocument(publicFile, doc);
+        }
+    }
+
     public static void mergeXmlData(File appDir, ExtFile RFile) throws IOException, ParserConfigurationException, SAXException, XPathExpressionException, DirectoryException {
         File publicFile = new File(appDir, "res/values/public.xml");
         Document doc = loadDocument(publicFile);
         XPath xPath = XPathFactory.newInstance().newXPath();
         InputStream in = RFile.getDirectory().getFileInput("R.txt");
         Scanner scanner = new Scanner(in);
-        ArrayList<String> idNames = new ArrayList<>();
+        ArrayList<String> idTags = new ArrayList<>();
         // read line
         while (scanner.hasNextLine()) {
             String line = scanner.nextLine();
@@ -163,7 +194,7 @@ public class XmlPatcher {
                 Element publicTag = doc.createElement("public");
                 if (type.equals("id")) {
                     // need to append ids.xml
-                    idNames.add(name);
+                    idTags.add(name);
                 }
                 publicTag.setAttribute("type", type);
                 publicTag.setAttribute("name", name);
@@ -175,7 +206,7 @@ public class XmlPatcher {
             File idsFile = new File(appDir, "res/values/ids.xml");
             Document idsDoc = loadDocument(idsFile);
             Node resources = idsDoc.getElementsByTagName("resources").item(0);
-            for (String name : idNames) {
+            for (String name : idTags) {
                 Element itemTag = idsDoc.createElement("item");
                 itemTag.setAttribute("type", "id");
                 itemTag.setAttribute("name", name);
