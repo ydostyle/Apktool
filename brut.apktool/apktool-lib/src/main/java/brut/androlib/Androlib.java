@@ -413,7 +413,7 @@ public class Androlib {
             return;
         }
         try {
-            LOGGER.info("build aar...");
+            LOGGER.info("Build aar...");
             ExtFile file = new ExtFile(buildOptions.aarPath);
 
             // add activity to Manifest.xml
