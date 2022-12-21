@@ -72,7 +72,7 @@ public class Utils {
                     String filePath = file.toAbsolutePath().toString();
                     String fileName = file.getFileName().toString();
 
-                    Pattern pattern = Pattern.compile("R*.smali");
+                    Pattern pattern = Pattern.compile("R(\\.|\\$).*smali");
                     Matcher matcher = pattern.matcher(fileName);
 
                     boolean isMatch = matcher.matches();
