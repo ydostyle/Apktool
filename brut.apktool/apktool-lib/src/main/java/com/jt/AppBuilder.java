@@ -19,9 +19,7 @@ import javax.xml.transform.TransformerException;
 
 
 public class AppBuilder {
-    /**
-     * resize image
-     */
+    // resize image
     public static BufferedImage resize(BufferedImage source, int targetW, int targetH) {
         int type = source.getType();
         BufferedImage target = null;
@@ -50,9 +48,7 @@ public class AppBuilder {
         return target;
     }
 
-    /**
-     * outputimg
-     */
+    // output img
     public static void saveImageAsJpg(String fromFileStr, String saveToFileStr, int width, int height)
         throws Exception {
         BufferedImage srcImage;

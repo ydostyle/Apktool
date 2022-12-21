@@ -9,15 +9,15 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import brut.androlib.Androlib;
 import brut.androlib.AndrolibException;
@@ -39,12 +39,11 @@ public class Utils {
             return file;
         }
 
-        public static void trimWhitespace(Node node)
-        {
+        public static void trimWhitespace(Node node) {
             NodeList children = node.getChildNodes();
-            for(int i = 0; i < children.getLength(); ++i) {
+            for (int i = 0; i < children.getLength(); ++i) {
                 Node child = children.item(i);
-                if(child.getNodeType() == Node.TEXT_NODE) {
+                if (child.getNodeType() == Node.TEXT_NODE) {
                     child.setTextContent(child.getTextContent().trim());
                 }
                 trimWhitespace(child);
@@ -62,12 +61,23 @@ public class Utils {
             String exclude2 = new File(rootPath.toString(), "dist").toString();
             String exclude3 = new File(rootPath.toString(), "original").toString();
             String smaliPath = new File(rootPath.toString(), "smali").toString();
+            String oldSmaliName = oldName.replace(".", "/");
+            String newSmaliName = newName.replace(".", "/");
             LOGGER.info("Start replacing the package name...");
+            ArrayList<String> excludeSmali = new ArrayList<>();
+            ArrayList<String> excludeOrgSmali = new ArrayList<>();
             Files.walkFileTree(rootPath, new SimpleFileVisitor<Path>() {
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    String fileString = file.toAbsolutePath().toString();
-                    if (fileString.startsWith(exclude1) || fileString.startsWith(exclude2) || fileString.startsWith(exclude3)) {
+                    String filePath = file.toAbsolutePath().toString();
+                    String fileName = file.getFileName().toString();
+
+                    Pattern pattern = Pattern.compile("R*.smali");
+                    Matcher matcher = pattern.matcher(fileName);
+
+                    boolean isMatch = matcher.matches();
+
+                    if (filePath.startsWith(exclude1) || filePath.startsWith(exclude2) || filePath.startsWith(exclude3) || isMatch) {
                         return FileVisitResult.CONTINUE;
                     }
 
@@ -79,8 +89,26 @@ public class Utils {
                     String replaced = content.replace(oldName, newName);
 
                     // smali additional handling
-                    if(fileString.startsWith(smaliPath)){
-                        replaced = replaced.replace(oldName.replace(".","/"), newName.replace(".","/"));
+                    if (filePath.startsWith(smaliPath) && replaced.contains(oldSmaliName)) {
+                        replaced = replaced.replace(oldSmaliName, newSmaliName);
+                        // if contains load so
+                        if (replaced.contains("Ljava/lang/System;->load")) {
+                            // add to exclude file
+                            String[] lines = replaced.split("\\r?\\n");
+                            String[] values = lines[0].split(" ");
+                            if (values.length > 0) {
+                                String str1 = values[values.length - 1];
+                                String str2 = str1.replace("L", "")
+                                    .replace("/", ".")
+                                    .replace(";", "");
+
+                                excludeSmali.add(str1);
+                                excludeSmali.add(str2);
+
+                                excludeOrgSmali.add(str1.replace(newSmaliName, oldSmaliName));
+                                excludeOrgSmali.add(str2.replace(newName, oldName));
+                            }
+                        }
                     }
 
                     // 写入替换后的内容
@@ -89,6 +117,44 @@ public class Utils {
                     return FileVisitResult.CONTINUE;
                 }
             });
+
+            // need to Restore
+            if (excludeSmali.size() > 0) {
+                // Restore package names to manifest
+                Path manifest = new File(rootPath.toString(), "AndroidManifest.xml").toPath();
+                byte[] bytes = Files.readAllBytes(manifest);
+                // read content
+                String content = new String(bytes, StandardCharsets.ISO_8859_1);
+
+                for (int i = 0; i < excludeSmali.size(); i++) {
+                    String exclude = excludeSmali.get(i);
+                    content = content.replace(exclude, excludeOrgSmali.get(i));
+                }
+                Files.write(manifest, content.getBytes(StandardCharsets.ISO_8859_1), StandardOpenOption.TRUNCATE_EXISTING);
+
+                // Restore package names to smali folder
+                Files.walkFileTree(rootPath, new SimpleFileVisitor<Path>() {
+                    @Override
+                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                        String fileString = file.toAbsolutePath().toString();
+                        if (fileString.startsWith(smaliPath)) {
+                            byte[] bytes = Files.readAllBytes(file);
+                            // read content
+                            String content = new String(bytes, StandardCharsets.ISO_8859_1);
+                            if (content.contains(newSmaliName)) {
+                                // start replace
+                                for (String exclude : excludeSmali) {
+                                    content = content.replace(exclude, exclude.replace(newSmaliName, oldSmaliName));
+                                }
+                            }
+                            // 写入替换后的内容
+                            Files.write(file, content.getBytes(StandardCharsets.ISO_8859_1), StandardOpenOption.TRUNCATE_EXISTING);
+                            return FileVisitResult.CONTINUE;
+                        }
+                        return FileVisitResult.CONTINUE;
+                    }
+                });
+            }
         }
     }
 

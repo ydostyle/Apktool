@@ -106,12 +106,14 @@ public class XmlPatcher {
 
         XPath xpath = XPathFactory.newInstance().newXPath();
 
-        Node mainNode = (Node) xpath.evaluate("//intent-filter/action[@name='android.intent.action.MAIN']", doc, XPathConstants.NODE);
+//        Node mainNode = (Node) xpath.evaluate("//intent-filter/action[@name='android.intent.action.MAIN']", doc, XPathConstants.NODE);
+        Node mainNode = (Node) xpath.evaluate("//intent-filter/category[@name='android.intent.category.LAUNCHER']/preceding-sibling::action[@name='android.intent.action.MAIN']", doc, XPathConstants.NODE);
         Node launcherNode = (Node) xpath.evaluate("//intent-filter/category[@name='android.intent.category.LAUNCHER']", doc, XPathConstants.NODE);
         if (mainNode == null || launcherNode == null) {
             LOGGER.warning("not found node");
             return;
         }
+
 
         // edit data
         NamedNodeMap mainNodeMap = mainNode.getAttributes();
