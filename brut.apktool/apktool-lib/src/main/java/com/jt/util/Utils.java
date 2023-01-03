@@ -75,9 +75,9 @@ public class Utils {
                     Pattern pattern = Pattern.compile("R(\\.|\\$).*smali");
                     Matcher matcher = pattern.matcher(fileName);
 
-                    boolean isMatch = matcher.matches();
+                    boolean isRSmali = matcher.matches();
 
-                    if (filePath.startsWith(exclude1) || filePath.startsWith(exclude2) || filePath.startsWith(exclude3) || isMatch) {
+                    if (filePath.startsWith(exclude1) || filePath.startsWith(exclude2) || filePath.startsWith(exclude3) || isRSmali) {
                         return FileVisitResult.CONTINUE;
                     }
 

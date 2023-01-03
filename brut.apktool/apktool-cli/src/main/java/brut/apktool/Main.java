@@ -228,6 +228,10 @@ public class Main {
             buildOptions.aarPackageName = cli.getOptionValue("aar-pkg");
         }
 
+        if(cli.hasOption("obfuscator")){
+            buildOptions.obPath = cli.getOptionValue("obfuscator");
+        }
+
         if(cli.hasOption("rename-pkg")){
             buildOptions.renamePackageName = cli.getOptionValue("rename-pkg");
         }
@@ -531,6 +535,13 @@ public class Main {
             .argName("dir")
             .build();
 
+        Option obOption = Option.builder()
+            .longOpt("obfuscator")
+            .desc("Obfuscator by BlackObfuscator")
+            .hasArg(true)
+            .argName("dir")
+            .build();
+
         // check for advance mode
         if (isAdvanceMode()) {
             decodeOptions.addOption(noDbgOption);
@@ -570,6 +581,7 @@ public class Main {
         buildOptions.addOption(renamePkgOption);
         buildOptions.addOption(logoOption);
         buildOptions.addOption(appNameOption);
+        buildOptions.addOption(obOption);
 
         // add basic framework options
         frameOptions.addOption(tagOption);

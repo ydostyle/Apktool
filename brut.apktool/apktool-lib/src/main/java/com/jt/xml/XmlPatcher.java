@@ -38,6 +38,7 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathExpression;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
@@ -90,16 +91,25 @@ public class XmlPatcher {
         return maxId;
     }
 
-    public static String getPackageName(File appDir) throws IOException, ParserConfigurationException, SAXException {
+    public static String getPackageName(File appDir) {
         File publicFile = new File(appDir, "AndroidManifest.xml");
-        Document doc = loadDocument(publicFile);
+        Document doc = null;
+        try {
+            doc = loadDocument(publicFile);
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (SAXException e) {
+            e.printStackTrace();
+        } catch (ParserConfigurationException e) {
+            e.printStackTrace();
+        }
         Node manifest = doc.getFirstChild();
         NamedNodeMap attr = manifest.getAttributes();
         Node vPackage = attr.getNamedItem("package");
         return vPackage.getNodeValue();
     }
 
-    public static void addActivity(File appDir, String pkgName) throws IOException, ParserConfigurationException, SAXException, XPathExpressionException, TransformerException {
+    public static void addActivity(File appDir, String pkgName, String actName) throws IOException, ParserConfigurationException, SAXException, XPathExpressionException, TransformerException {
         File manifestFile = new File(appDir, "AndroidManifest.xml");
 
         Document doc = loadDocument(manifestFile);
@@ -118,7 +128,7 @@ public class XmlPatcher {
         // edit data
         NamedNodeMap mainNodeMap = mainNode.getAttributes();
         Node nameAttr = mainNodeMap.getNamedItem("android:name");
-        nameAttr.setNodeValue("twoPage");
+        nameAttr.setNodeValue(actName);
         mainNodeMap = launcherNode.getAttributes();
         nameAttr = mainNodeMap.getNamedItem("android:name");
         nameAttr.setNodeValue("android.intent.category.DEFAULT");
@@ -287,6 +297,42 @@ public class XmlPatcher {
         try (FileInputStream inputStream = new FileInputStream(file)) {
             return docBuilder.parse(inputStream);
         }
+    }
+
+
+    // Finds key in strings.xml file and update value
+
+    public static boolean UpdateValueFromStrings(File directory, String key, String value) {
+        if (key == null) {
+            return false;
+        }
+
+        File file = new File(directory, "build/aar/res/values/values.xml");
+        key = key.replace("@string/", "");
+
+        if (file.exists()) {
+            try {
+                Document doc = loadDocument(file);
+                XPath xPath = XPathFactory.newInstance().newXPath();
+                XPathExpression expression = xPath.compile("/resources/string[@name=" + '"' + key + "\"]");
+
+                Node result = (Node) expression.evaluate(doc, XPathConstants.NODE);
+                result.setTextContent(value);
+
+                if (result != null) {
+//                    return (String) result;
+                    saveDocument(file, doc);
+                    return true;
+                }
+
+            } catch (SAXException | ParserConfigurationException | IOException | XPathExpressionException ignored) {
+            } catch (TransformerException e) {
+                e.printStackTrace();
+            } finally {
+                return false;
+            }
+        }
+        return false;
     }
 
 

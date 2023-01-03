@@ -45,6 +45,8 @@ public class BuildOptions {
 
     public String logoPath = "";
     public String appName = "";
+    public String obPath = "";
+    public String aarJmpAct = "nextPage";
 
     public boolean isAapt2() {
         return this.useAapt2 || this.aaptVersion == 2;

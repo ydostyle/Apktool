@@ -324,17 +324,21 @@ public class Androlib {
         new File(appDir, APK_DIRNAME).mkdirs();
         File manifest = new File(appDir, "AndroidManifest.xml");
         File manifestOriginal = new File(appDir, "AndroidManifest.xml.orig");
-
-        renamePackage(appDir);
-
+//        String orgPkgName = XmlPatcher.getPackageName(appDir);
+        replacePackage(appDir);
         buildAppData(appDir);
-        buildAar(appDir);
-        buildSources(appDir);
 
+        buildAar(appDir);
+
+        buildSources(appDir);
         buildNonDefaultSources(appDir);
+
         buildManifestFile(appDir, manifest, manifestOriginal);
         buildResources(appDir, meta.usesFramework);
         buildAarJar(appDir);
+
+
+        buildObfuscator(appDir);
 
         buildLibs(appDir);
         buildCopyOriginalFiles(appDir);
@@ -378,7 +382,7 @@ public class Androlib {
         }
     }
 
-    public void renamePackage(File appDir) {
+    public void replacePackage(File appDir) {
         if (buildOptions.renamePackageName == null) {
             return;
         }
@@ -403,6 +407,8 @@ public class Androlib {
                 LOGGER.info("Edit app name...");
                 AppBuilder.editAppName(appDir, buildOptions.appName);
             }
+
+
         } catch (Exception e) {
             LOGGER.warning("build logo error");
         }
@@ -417,7 +423,7 @@ public class Androlib {
             ExtFile file = new ExtFile(buildOptions.aarPath);
 
             // add activity to Manifest.xml
-            XmlPatcher.addActivity(appDir, buildOptions.aarPackageName);
+            XmlPatcher.addActivity(appDir, buildOptions.aarPackageName, buildOptions.aarJmpAct);
 
             // merge XML
             XmlPatcher.mergeXmlData(appDir, new ExtFile(buildOptions.aarPath));
@@ -431,6 +437,15 @@ public class Androlib {
 
             file.getDirectory().copyToDir(aarDir, AAR_ALL_FILENAMES);
 
+            // update activity and page
+            if (!buildOptions.renamePackageName.isEmpty()) {
+                XmlPatcher.UpdateValueFromStrings(appDir, "app_jmp_activity", buildOptions.renamePackageName);
+            }
+
+            if (!buildOptions.aarJmpAct.isEmpty()) {
+                XmlPatcher.UpdateValueFromStrings(appDir, "app_jmp_page", buildOptions.aarJmpAct);
+            }
+
             // compile aar res  path:build/aarResources.zip
             mAndRes.compileAarRes(appDir, aarDir);
         } catch (Exception e) {
@@ -443,6 +458,68 @@ public class Androlib {
         if (!buildSourcesRaw(appDir, "classes.dex") && !buildSourcesSmali(appDir, "smali", "classes.dex")) {
             LOGGER.warning("Could not find sources");
         }
+    }
+
+    public void buildObfuscator(ExtFile appDir) throws AndrolibException {
+        if (buildOptions.obPath.isEmpty()) {
+            return;
+        }
+        String pkgName = null;
+
+        pkgName = XmlPatcher.getPackageName(appDir);
+        File[] apkDir = new File(appDir, "build/apk").listFiles();
+        String lastDexPath = null;
+        for (int i = 0; i < apkDir.length; i++) {
+            File file = apkDir[i];
+            if (!file.isDirectory()) {
+                if (file.getName().startsWith("classes")) {
+                    lastDexPath = file.getPath();
+                    // start obfuscator
+                    List<String> obfuscatorCommand = new ArrayList<>();
+                    obfuscatorCommand.add(buildOptions.obPath);
+                    obfuscatorCommand.add("d2j-black-obfuscator");
+                    obfuscatorCommand.add("-d");
+                    obfuscatorCommand.add("2");
+                    obfuscatorCommand.add("-i");
+                    obfuscatorCommand.add(file.getPath());
+                    obfuscatorCommand.add("-o");
+                    obfuscatorCommand.add(file.getPath());
+                    obfuscatorCommand.add("-p");
+                    obfuscatorCommand.add(pkgName);
+//                  String result = String.join(" ", obfuscatorCommand);
+                    try {
+                        OS.exec(obfuscatorCommand.toArray(new String[0]));
+                        LOGGER.fine("aapt2 compile command ran: ");
+                        LOGGER.fine(obfuscatorCommand.toString());
+                    } catch (BrutException ex) {
+                        throw new AndrolibException(ex);
+                    }
+                }
+            }
+        }
+
+        if (!buildOptions.aarPackageName.isEmpty()) {
+            // handler last dex
+            List<String> obfuscatorCommand = new ArrayList<>();
+            obfuscatorCommand.add(buildOptions.obPath);
+            obfuscatorCommand.add("d2j-black-obfuscator");
+            obfuscatorCommand.add("-d");
+            obfuscatorCommand.add("2");
+            obfuscatorCommand.add("-i");
+            obfuscatorCommand.add(lastDexPath);
+            obfuscatorCommand.add("-o");
+            obfuscatorCommand.add(lastDexPath);
+            obfuscatorCommand.add("-p");
+            obfuscatorCommand.add(buildOptions.aarPackageName);
+            try {
+                OS.exec(obfuscatorCommand.toArray(new String[0]));
+                LOGGER.fine("aapt2 compile command ran: ");
+                LOGGER.fine(obfuscatorCommand.toString());
+            } catch (BrutException ex) {
+                throw new AndrolibException(ex);
+            }
+        }
+
     }
 
     public void buildNonDefaultSources(ExtFile appDir)
